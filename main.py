@@ -52,9 +52,11 @@ def decision_tree_learning(training_dataset, depth):
 
     labels = training_dataset[:, -1]
 
-    if len(set(training_dataset)) == 1:
-        return
-
+    if np.unique(labels).size == 1:
+        return DTree.LeafNode(labels[0]), depth
+    else:
+        split = find_split(training_dataset)
+        node = DTree.Node()
     # 2: if all samples have the same label then
     # 3:    return (a leaf node with this value, depth)
     # 4: else
