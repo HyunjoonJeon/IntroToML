@@ -1,4 +1,5 @@
 import numpy as np
+from tree import DTree
 
 
 def information_entropy(dataset):
@@ -14,16 +15,6 @@ def information_entropy(dataset):
     return ret
 
 
-def information_gain(dataset):
-    h_dataset = information_entropy(dataset)
-    dataset_cnt = h_dataset.size
-    single_data_att_cnt = h_dataset[0].size
-    s = 0
-    for subset in np.vsplit(dataset, [single_data_att_cnt]):
-        s = (subset.size/dataset_cnt) * information_entropy(subset)
-    return h_dataset - s
-
-
 def remainder(s_left, s_right):
     """PRE: "s_left" and "s_right" have labels on their last column.
     """
@@ -32,19 +23,38 @@ def remainder(s_left, s_right):
     left_size = no_labels_size(s_left)
     right_size = no_labels_size(s_right)
 
+    h_left = information_entropy(s_left)
+    h_right = information_entropy(s_right)
+
     total = left_size + right_size
-    return (left_size/total) * information_entropy(s_left) + (right_size/total) * information_entropy(s_right)
+    return (left_size/total) * h_left + (right_size/total) * h_right
+
+
+def information_gain(dataset, left, right):
+    h_dataset = information_entropy(dataset)
+    return h_dataset - remainder(left, right)
 
 
 def find_split(dataset):
+    max_attr_gain = float("-inf")
+    max_attr_idx = None
     for i in range(dataset[0].size-1):
         subset = dataset[np.argsort(dataset[:, i], axis=0)][:, (i, -1)]
         left, right = np.vsplit(subset, 2)
-
-        remainder(left, right)
+        attr_i_gain = information_gain(dataset, left, right)
+        if attr_i_gain > max_attr_gain:
+            max_attr_gain = attr_i_gain
+            max_attr_idx = i
+    return max_attr_idx
 
 
 def decision_tree_learning(training_dataset, depth):
+
+    labels = training_dataset[:, -1]
+
+    if len(set(training_dataset)) == 1:
+        return
+
     # 2: if all samples have the same label then
     # 3:    return (a leaf node with this value, depth)
     # 4: else
