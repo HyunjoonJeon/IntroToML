@@ -19,4 +19,4 @@ class DTree:
         isLeaf = (self.l_tree is None) and (self.r_tree is None)
         if isLeaf:
             return f"leaf:{self.val}"
-        return f"LEFT: {self.l_tree} [X{self.attr} < {self.val}] RIGHT: {self.r_tree}"
+        return f"( [X{self.attr} < {self.val}] LEFT: {self.l_tree} RIGHT: {self.r_tree} )"
