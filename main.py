@@ -23,10 +23,6 @@ def information_entropy(dataset):
     return ret
 
 
-info_ent = information_entropy(skewed_dataset)
-assert info_ent <= 1, f"Expected 1, Actual: {info_ent}"
-
-
 def remainder(s_left, s_right):
     """PRE: "s_left" and "s_right" have labels on their last column.
     """
@@ -70,8 +66,8 @@ def find_split(dataset):
         if attr_i_gain > max_attr_gain:
             max_attr_gain = attr_i_gain
             max_attr_idx = i
-            max_left, max_right = left.max(axis=0)[0], right.min(axis=0)[0]
-            split_value = (max_left + max_right) / 2
+            max_left, min_right = left.max(axis=0)[i], right.min(axis=0)[i]
+            split_value = (max_left + min_right) / 2
             left_ret, right_ret = left, right
 
     return max_attr_idx, split_value, left_ret, right_ret
@@ -80,15 +76,16 @@ def find_split(dataset):
 def decision_tree_learning(training_dataset, depth=0):
     labels = training_dataset[:, -1]
     if np.unique(labels).size == 1:
-        return DTree.LeafNode(labels[0]), depth
+        return DTree.LeafNode(labels[0], depth), depth
     split_idx, split_value, l_dataset, r_dataset = find_split(training_dataset)
 
-    node = DTree.Node(split_idx, split_value)
+    node = DTree.Node(split_idx, split_value, depth)
     l_branch, l_depth = decision_tree_learning(l_dataset, depth+1)
     r_branch, r_depth = decision_tree_learning(r_dataset, depth+1)
     node.l_tree, node.r_tree = l_branch, r_branch
     return node, max(l_depth, r_depth)
 
 
-# print(decision_tree_learning(clean_dataset[495:506]))
-print(decision_tree_learning(skewed_dataset))
+# tree, depth = decision_tree_learning(skewed_dataset)
+tree, depth = decision_tree_learning(clean_dataset)
+# print(tree)
