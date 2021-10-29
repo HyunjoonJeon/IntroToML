@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import default_rng
 from tree import DTree
 
 
@@ -86,6 +87,267 @@ def decision_tree_learning(training_dataset, depth=0):
     return node, max(l_depth, r_depth)
 
 
+# Step 3 - Evaluation 
+
+# From tutorial
+def k_fold_split(n_splits, n_instances, random_generator=default_rng(seed=0)):
+    """ Split n_instances into n mutually exclusive splits at random.
+    
+    Args:
+        n_splits (int): Number of splits
+        n_instances (int): Number of instances to split
+        random_generator (np.random.Generator): A random generator
+
+    Returns:
+        list: a list (length n_splits). Each element in the list should contain a 
+            numpy array giving the indices of the instances in that split.
+    """
+
+    # generate a random permutation of indices from 0 to n_instances
+    if random_generator is not None:
+        shuffled_indices = random_generator.permutation(n_instances)
+    else:
+        shuffled_indices = range(0, n_instances)
+
+    # split shuffled indices into almost equal sized splits
+    split_indices = np.array_split(shuffled_indices, n_splits)
+
+    return split_indices
+
+def train_test_k_fold(n_folds, n_instances, random_generator=default_rng(seed=0)):
+    """ Generate train and test indices at each fold.
+    
+    Args:
+        n_folds (int): Number of folds
+        n_instances (int): Total number of instances
+        random_generator (np.random.Generator): A random generator
+
+    Returns:
+        list: a list of length n_folds. Each element in the list is a list (or tuple) 
+            with two elements: a numpy array containing the train indices, and another 
+            numpy array containing the test indices.
+    """
+
+    # split the dataset into k splits (n folds)
+    # these are "row" indices
+    split_indices = k_fold_split(n_folds, n_instances, random_generator)
+
+    folds = []
+    for k in range(n_folds):
+        test_indices = np.array(split_indices[k])
+        # Concatenate all other folds
+        train_indices = np.concatenate(split_indices[:k] + split_indices[k+1:])
+
+        folds.append([train_indices, test_indices])
+
+    return folds
+
+def k_cross_validation(k, dataset):
+    # Divide "dataset" into 'k' equal sections
+    accuracies = np.zeros((n_folds, ))
+    # NOTE: 'x' dataset and 'y' is the associated class labels
+    for i, (train_indices, test_indices) in enumerate(train_test_k_fold(n_folds, len(x), rg)):
+        # train_indices: row indices that give train rows
+        # test_indices: row indices that give test rows
+        
+        # For numpy array we can index by indices to get all associated rows
+        x_train = x[train_indices, :] # get all rows with indices "train_indices" and keep all columns
+        y_train = y[train_indices] # get all elements at indicies "train_indices" (since 'y' is a single dimension array)
+        x_test = x[test_indices, :] # same as "x_train"
+        y_test = y[test_indices] # same as "y_train", but these are the "gold" labels, this is what "x_test" classes are known to be
+
+        k_nn_classifier = KNNClassifier(k=9) # construct the classifier
+        
+        k_nn_classifier.fit(x_train, y_train) # "fit" <=> train the classifier
+
+        # Predict on x_test
+        prediction_labels = k_nn_classifier.predict(x_test) # predict "x_test"
+
+        # Compute accuracy
+        accuracies[i] = accuracy(y_test, prediction_labels) # compare against the "gold" labels
+
+# End from tutorial.
+
+def compute_fn_measure(conf_matrix, beta):
+    precisions = precision(conf_matrix)
+    recalls = recall(conf_matrix)
+
+    # just to make sure they are of the same length
+    num_precisions = len(precisions)
+    assert num_precisions == len(recalls)
+
+    # Compute the per-class F measure
+    f_measures = list()
+    
+    beta_sqr = beta ** 2
+    
+    for i in range(num_precisions):
+        i_recall = recalls[i]
+        i_precision = precisions[i]
+        i_f_measure = (1 + beta_sqr) * i_precision * i_recall / ((beta_sqr * i_precision) + i_recall)
+        f_measures.append(i_f_measure)
+    
+    return np.array(f_measures)
+
+def compute_f1_measure(conf_matrix):
+    return compute_fn_measure(conf_matrix, 1)
+
+def precision(conf_matrix):
+    # Compute the precision per class
+    p = list()
+    for i in range(len(conf_matrix)):
+        i_col_sum = conf_matrix[:, i].sum()
+        i_col_tp = conf_matrix[i][i]
+        i_col_precision = i_col_tp / i_col_sum
+        p.append(i_col_precision)
+
+    return np.array(p)
+
+def recall(conf_matrix):
+    # Compute the recall per class
+    r = list()
+    for i in range(len(conf_matrix)):
+        i_row_sum = conf_matrix[i, :].sum()
+        i_col_tp = conf_matrix[i][i]
+        i_col_recall = i_col_tp / i_row_sum
+        r.append(i_col_recall)
+        
+    return np.array(r)
+
+def accuracy_from_confusion(conf_matrix):
+    """ Compute the accuracy given the confusion matrix
+
+    Args:
+        confusion (np.ndarray): shape (C, C), where C is the number of classes. 
+                    Rows are ground truth per class, columns are predictions
+
+    Returns:
+        float : the accuracy
+    """   
+    elem_sum = np.sum(conf_matrix)
+    if elem_sum > 0:
+        return np.trace(conf_matrix) / elem_sum
+    else:
+        return 0.
+
+def confusion_matrix(y_gold, y_prediction, class_labels=None, forceSize=0):
+    """ Compute the confusion matrix.
+        
+    Args:
+        y_gold (np.ndarray): the correct ground truth/gold standard labels
+        y_prediction (np.ndarray): the predicted labels
+        class_labels (np.ndarray): a list of unique class labels. 
+                               Defaults to the union of y_gold and y_prediction.
+
+    Returns:
+        np.array : shape (C, C), where C is the number of classes. 
+                   Rows are ground truth per class, columns are predictions
+    """
+
+    # if no class_labels are given, we obtain the set of unique class labels from
+    # the union of the ground truth annotation and the prediction
+    if not class_labels:
+        class_labels = np.unique(np.concatenate((y_gold, y_prediction)))
+
+    if forceSize > 0:
+        num_labels = forceSize
+    else:
+        num_labels = len(class_labels)
+    confusion = np.zeros((num_labels, num_labels), dtype=np.float64)
+
+    # Create map from: class_label to number
+    class_label_num_dict = dict()
+    for (num, class_label) in enumerate(list(class_labels)):
+        class_label_num_dict[class_label] = num
+    
+    for entry_idx in range(len(y_gold)):
+        gold_label = y_gold[entry_idx]
+        pred_label = y_prediction[entry_idx]
+        gold_label_num = class_label_num_dict[gold_label]
+        pred_label_num = class_label_num_dict[pred_label]
+        confusion[gold_label_num][pred_label_num] += 1
+
+    return confusion
+
+def construct_avg_confusion_matrix(tree_test_dataset_pairs):
+    NUM_LABELS = 4
+    total_confusion = np.zeros((NUM_LABELS, NUM_LABELS), dtype=np.float64)
+    for (tree, test_dataset) in tree_test_dataset_pairs:
+        total = test_dataset.transpose()[0].size
+
+        predicted_values = list()
+        gold_values = list()
+        for test in test_dataset:
+            predicted_values.append(tree.predict(test))
+            gold_values.append(test[-1])
+
+        confusion = confusion_matrix(gold_values, predicted_values, forceSize=NUM_LABELS)
+        
+        total_confusion += confusion
+    total_confusion /= len(tree_test_dataset_pairs)
+    # returns average confusion matrix  
+    return total_confusion
+
+def evaluate(test_db, trained_tree):
+    """Returns the accuracy of the tree
+    """ 
+    # nested 10-fold cross validation (”option 2”) on both the clean and noisy datasets
+    correct_predictions = 0
+    total = test_db.transpose()[0].size
+    for i in range(total):
+        test_row = test_db[i]
+        predicted_label = trained_tree.predict(test_row)
+        correct_label = test_row[-1]
+        is_correct_prediction = predicted_label == correct_label
+        if is_correct_prediction:
+            correct_predictions += 1
+    return float(correct_predictions / total)
+
+def nested_k_cross_validation(k, dataset, random_generator=default_rng(seed=0)):
+    # number of rows
+    n_instances = dataset.transpose()[0].size
+    
+    final_models = list()
+    for (train_indices, test_indices) in train_test_k_fold(k, n_instances, random_generator):
+        trees = list()
+        training_and_val_dataset = dataset[train_indices, :]
+        test_dataset = dataset[test_indices, :]
+        for (train_indices, val_indices) in train_test_k_fold(k, train_indices.size, random_generator=None):
+            # Train new tree, but don't shuffle
+            training_dataset = training_and_val_dataset[train_indices, :]
+            validation_dataset = training_and_val_dataset[val_indices, :]
+            trained_tree, depth = decision_tree_learning(training_dataset)
+            accuracy = evaluate(validation_dataset, trained_tree)
+            trees.append([trained_tree, accuracy])
+        # "highest_accuracy" unused
+        best_tree, highest_accuracy = max(trees, key=lambda tree_accuracy: tree_accuracy[1])
+        final_models.append([best_tree, test_dataset])
+    return final_models
+
+
+def print_stats(dataset):
+    best_trees = nested_k_cross_validation(10, dataset)
+    avg_conf_matr = construct_avg_confusion_matrix(best_trees)
+    print(avg_conf_matr)
+    print("===========================================================")
+    print("Accuracy vals: ", accuracy_from_confusion(avg_conf_matr))
+    print("Recall vals: ", recall(avg_conf_matr))
+    print("Precision vals: ", precision(avg_conf_matr))
+    print("F1 vals: ", compute_f1_measure(avg_conf_matr))
+    print("===========================================================")
+
+def prune():
+    # for each node directly connected to two leaves, 
+    #       evaluate the benefits on the validation error of substituting this node
+    #       with a single leaf (defined according to the training set). 
+    #       If a single leaf reduces the validation error, then
+    #           node in pruned and replaced by a single leaf. 
+    #           The tree needs to be parsed several times until there is no more
+    #           node connected to two leaves (HINT: when you prune a node, the parent node might now verify this condition).
+    pass
 # tree, depth = decision_tree_learning(skewed_dataset)
-tree, depth = decision_tree_learning(clean_dataset)
+# trained_tree, depth = decision_tree_learning(clean_dataset)
+
+print_stats(noisy_dataset)
+print_stats(clean_dataset)
 # print(tree)

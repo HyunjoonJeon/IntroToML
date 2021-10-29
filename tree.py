@@ -40,6 +40,16 @@ class DTree:
             dtree.annotate(ann, (xs[i], ys[i]))
         plt.show()
 
+    def predict(self, attrs_row):
+        # last column is the correct classification label
+        attr_value = attrs_row[self.attr]
+        if (self.is_leaf):
+            return self.val
+        if (attr_value < self.val):
+            # take left
+            return self.l_tree.predict(attrs_row)
+        return self.r_tree.predict(attrs_row)
+
     # Factory Methods
 
     @classmethod
