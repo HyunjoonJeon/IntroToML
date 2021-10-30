@@ -87,12 +87,12 @@ def decision_tree_learning(training_dataset, depth=0):
     return node, max(l_depth, r_depth)
 
 
-# Step 3 - Evaluation 
+# Step 3 - Evaluation
 
 # From tutorial
-def k_fold_split(n_splits, n_instances, random_generator=default_rng(seed=0)):
+def k_fold_split(n_splits, n_instances, random_generator=default_rng()):
     """ Split n_instances into n mutually exclusive splits at random.
-    
+
     Args:
         n_splits (int): Number of splits
         n_instances (int): Number of instances to split
@@ -114,9 +114,10 @@ def k_fold_split(n_splits, n_instances, random_generator=default_rng(seed=0)):
 
     return split_indices
 
-def train_test_k_fold(n_folds, n_instances, random_generator=default_rng(seed=0)):
+
+def train_test_k_fold(n_folds, n_instances, random_generator=default_rng()):
     """ Generate train and test indices at each fold.
-    
+
     Args:
         n_folds (int): Number of folds
         n_instances (int): Total number of instances
@@ -142,31 +143,8 @@ def train_test_k_fold(n_folds, n_instances, random_generator=default_rng(seed=0)
 
     return folds
 
-def k_cross_validation(k, dataset):
-    # Divide "dataset" into 'k' equal sections
-    accuracies = np.zeros((n_folds, ))
-    # NOTE: 'x' dataset and 'y' is the associated class labels
-    for i, (train_indices, test_indices) in enumerate(train_test_k_fold(n_folds, len(x), rg)):
-        # train_indices: row indices that give train rows
-        # test_indices: row indices that give test rows
-        
-        # For numpy array we can index by indices to get all associated rows
-        x_train = x[train_indices, :] # get all rows with indices "train_indices" and keep all columns
-        y_train = y[train_indices] # get all elements at indicies "train_indices" (since 'y' is a single dimension array)
-        x_test = x[test_indices, :] # same as "x_train"
-        y_test = y[test_indices] # same as "y_train", but these are the "gold" labels, this is what "x_test" classes are known to be
-
-        k_nn_classifier = KNNClassifier(k=9) # construct the classifier
-        
-        k_nn_classifier.fit(x_train, y_train) # "fit" <=> train the classifier
-
-        # Predict on x_test
-        prediction_labels = k_nn_classifier.predict(x_test) # predict "x_test"
-
-        # Compute accuracy
-        accuracies[i] = accuracy(y_test, prediction_labels) # compare against the "gold" labels
-
 # End from tutorial.
+
 
 def compute_fn_measure(conf_matrix, beta):
     precisions = precision(conf_matrix)
@@ -178,19 +156,22 @@ def compute_fn_measure(conf_matrix, beta):
 
     # Compute the per-class F measure
     f_measures = list()
-    
+
     beta_sqr = beta ** 2
-    
+
     for i in range(num_precisions):
         i_recall = recalls[i]
         i_precision = precisions[i]
-        i_f_measure = (1 + beta_sqr) * i_precision * i_recall / ((beta_sqr * i_precision) + i_recall)
+        i_f_measure = (1 + beta_sqr) * i_precision * i_recall / \
+            ((beta_sqr * i_precision) + i_recall)
         f_measures.append(i_f_measure)
-    
+
     return np.array(f_measures)
+
 
 def compute_f1_measure(conf_matrix):
     return compute_fn_measure(conf_matrix, 1)
+
 
 def precision(conf_matrix):
     # Compute the precision per class
@@ -203,6 +184,7 @@ def precision(conf_matrix):
 
     return np.array(p)
 
+
 def recall(conf_matrix):
     # Compute the recall per class
     r = list()
@@ -211,8 +193,9 @@ def recall(conf_matrix):
         i_col_tp = conf_matrix[i][i]
         i_col_recall = i_col_tp / i_row_sum
         r.append(i_col_recall)
-        
+
     return np.array(r)
+
 
 def accuracy_from_confusion(conf_matrix):
     """ Compute the accuracy given the confusion matrix
@@ -223,16 +206,17 @@ def accuracy_from_confusion(conf_matrix):
 
     Returns:
         float : the accuracy
-    """   
+    """
     elem_sum = np.sum(conf_matrix)
     if elem_sum > 0:
         return np.trace(conf_matrix) / elem_sum
     else:
         return 0.
 
+
 def confusion_matrix(y_gold, y_prediction, class_labels=None, forceSize=0):
     """ Compute the confusion matrix.
-        
+
     Args:
         y_gold (np.ndarray): the correct ground truth/gold standard labels
         y_prediction (np.ndarray): the predicted labels
@@ -259,7 +243,7 @@ def confusion_matrix(y_gold, y_prediction, class_labels=None, forceSize=0):
     class_label_num_dict = dict()
     for (num, class_label) in enumerate(list(class_labels)):
         class_label_num_dict[class_label] = num
-    
+
     for entry_idx in range(len(y_gold)):
         gold_label = y_gold[entry_idx]
         pred_label = y_prediction[entry_idx]
@@ -269,29 +253,33 @@ def confusion_matrix(y_gold, y_prediction, class_labels=None, forceSize=0):
 
     return confusion
 
+
 def construct_avg_confusion_matrix(tree_test_dataset_pairs):
     NUM_LABELS = 4
     total_confusion = np.zeros((NUM_LABELS, NUM_LABELS), dtype=np.float64)
     for (tree, test_dataset) in tree_test_dataset_pairs:
-        total = test_dataset.transpose()[0].size
-
         predicted_values = list()
         gold_values = list()
         for test in test_dataset:
             predicted_values.append(tree.predict(test))
             gold_values.append(test[-1])
 
-        confusion = confusion_matrix(gold_values, predicted_values, forceSize=NUM_LABELS)
-        
+        confusion = confusion_matrix(
+            gold_values, predicted_values, forceSize=NUM_LABELS)
+
         total_confusion += confusion
     total_confusion /= len(tree_test_dataset_pairs)
-    # returns average confusion matrix  
+    # returns average confusion matrix
     return total_confusion
 
-def evaluate(test_db, trained_tree):
+
+def evaluate(test_db, trained_tree, init_counts=False):
     """Returns the accuracy of the tree
-    """ 
-    # nested 10-fold cross validation (”option 2”) on both the clean and noisy datasets
+    """
+    if init_counts:
+        NUM_LABELS = 4
+        trained_tree.init_counts(NUM_LABELS)
+
     correct_predictions = 0
     total = test_db.transpose()[0].size
     for i in range(total):
@@ -303,30 +291,40 @@ def evaluate(test_db, trained_tree):
             correct_predictions += 1
     return float(correct_predictions / total)
 
-def nested_k_cross_validation(k, dataset, random_generator=default_rng(seed=0)):
+
+def k_cross_validation(k, dataset, random_generator=default_rng()):
     # number of rows
     n_instances = dataset.transpose()[0].size
-    
+
     final_models = list()
     for (train_indices, test_indices) in train_test_k_fold(k, n_instances, random_generator):
-        trees = list()
+        training_dataset = dataset[train_indices, :]
+        test_dataset = dataset[test_indices, :]
+        trained_tree, depth = decision_tree_learning(training_dataset)
+        final_models.append([trained_tree, test_dataset])
+    return final_models
+
+
+def nested_k_cross_validation(k, dataset, random_generator=default_rng()):
+    # number of rows
+    n_instances = dataset.transpose()[0].size
+    n_of_trees = 0
+    final_models = list()
+    for (train_indices, test_indices) in train_test_k_fold(k, n_instances, random_generator):
         training_and_val_dataset = dataset[train_indices, :]
         test_dataset = dataset[test_indices, :]
-        for (train_indices, val_indices) in train_test_k_fold(k, train_indices.size, random_generator=None):
+        for (train_indices, val_indices) in train_test_k_fold(k-1, train_indices.size, random_generator=None):
             # Train new tree, but don't shuffle
             training_dataset = training_and_val_dataset[train_indices, :]
             validation_dataset = training_and_val_dataset[val_indices, :]
             trained_tree, depth = decision_tree_learning(training_dataset)
-            accuracy = evaluate(validation_dataset, trained_tree)
-            trees.append([trained_tree, accuracy])
-        # "highest_accuracy" unused
-        best_tree, highest_accuracy = max(trees, key=lambda tree_accuracy: tree_accuracy[1])
-        final_models.append([best_tree, test_dataset])
+            prune(validation_dataset, trained_tree, trained_tree)
+            final_models.append([trained_tree, test_dataset])
     return final_models
 
 
-def print_stats(dataset):
-    best_trees = nested_k_cross_validation(10, dataset)
+def print_cross_validation(dataset):
+    best_trees = k_cross_validation(10, dataset)
     avg_conf_matr = construct_avg_confusion_matrix(best_trees)
     print(avg_conf_matr)
     print("===========================================================")
@@ -336,18 +334,50 @@ def print_stats(dataset):
     print("F1 vals: ", compute_f1_measure(avg_conf_matr))
     print("===========================================================")
 
-def prune():
-    # for each node directly connected to two leaves, 
-    #       evaluate the benefits on the validation error of substituting this node
-    #       with a single leaf (defined according to the training set). 
-    #       If a single leaf reduces the validation error, then
-    #           node in pruned and replaced by a single leaf. 
-    #           The tree needs to be parsed several times until there is no more
-    #           node connected to two leaves (HINT: when you prune a node, the parent node might now verify this condition).
-    pass
+
+def print_nested_cross_validation(dataset):
+    best_trees = nested_k_cross_validation(10, dataset)
+    avg_conf_matr = construct_avg_confusion_matrix(best_trees)
+    print(avg_conf_matr)
+    print("===========================================================")
+    print("Pruned Accuracy vals: ", accuracy_from_confusion(avg_conf_matr))
+    print("Pruned Recall vals: ", recall(avg_conf_matr))
+    print("Pruned Precision vals: ", precision(avg_conf_matr))
+    print("Pruned F1 vals: ", compute_f1_measure(avg_conf_matr))
+    print("===========================================================")
+
+
+def prune(val_db, tree, root_tree):
+    if tree.is_only_leaf_parent():
+        # prune
+        # convert into a leaf whose value is the majority class label
+        before_prune_accuracy = evaluate(
+            val_db, root_tree, init_counts=True)
+        attr, val, l_tree, r_tree, counts = tree.convert_to_leaf()
+        after_prune_accuracy = evaluate(
+            val_db, root_tree, init_counts=True)
+
+        # Evaluate the resulting “pruned” tree using the “validation set”; prune if accuracy is higher than unpruned
+        # "pruned_tree" is side-effected as "pruned"
+        # print(f"Compare: after: {after_prune_accuracy} before: {before_prune_accuracy} | counts: {tree.counts}")
+        if after_prune_accuracy <= before_prune_accuracy:
+            # worse tree, revert back
+            tree.convert_back(attr, val, l_tree, r_tree, counts)
+            return False
+        # better tree, keep it
+
+        return True
+
+    l_tree_pruned = tree.l_tree and prune(val_db, tree.l_tree, root_tree)
+    r_tree_pruned = tree.r_tree and prune(val_db, tree.r_tree, root_tree)
+
+    return l_tree_pruned and r_tree_pruned and prune(val_db, tree, root_tree)
+
 # tree, depth = decision_tree_learning(skewed_dataset)
 # trained_tree, depth = decision_tree_learning(clean_dataset)
 
-print_stats(noisy_dataset)
-print_stats(clean_dataset)
+
+# print_cross_validation(clean_dataset)
+print_cross_validation(noisy_dataset)
+print_nested_cross_validation(noisy_dataset)
 # print(tree)
