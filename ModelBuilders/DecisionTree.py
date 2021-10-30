@@ -152,11 +152,10 @@ class DTree:
                 val_db, root_tree, init_counts=True)
             attr, val, l_tree, r_tree, counts = tree.convert_to_leaf()
             after_prune_accuracy = DTree.evaluate(
-                val_db, root_tree, init_counts=True)
+                val_db, root_tree)
 
             # Evaluate the resulting “pruned” tree using the “validation set”; prune if accuracy is higher than unpruned
             # "pruned_tree" is side-effected as "pruned"
-            # print(f"Compare: after: {after_prune_accuracy} before: {before_prune_accuracy} | counts: {tree.counts}")
             if after_prune_accuracy <= before_prune_accuracy:
                 # worse tree, revert back
                 tree.convert_back(attr, val, l_tree, r_tree, counts)

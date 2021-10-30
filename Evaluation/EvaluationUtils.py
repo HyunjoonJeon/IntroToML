@@ -87,7 +87,7 @@ class EvalUtils:
             training_and_val_dataset = dataset[train_indices, :]
             test_dataset = dataset[test_indices, :]
             for (train_indices, val_indices) in EvalUtils.train_test_k_fold(k-1, train_indices.size, random_generator=None):
-                # Train new tree, but don't shuffle
+                # Train new model, but don't shuffle
                 training_dataset = training_and_val_dataset[train_indices, :]
                 validation_dataset = training_and_val_dataset[val_indices, :]
                 trained_model = trained_model_constructor(training_dataset)
