@@ -57,7 +57,7 @@ class ConfusionMatrix:
     def accuracy(self):
         elem_sum = np.sum(self.npy_rep)
         if elem_sum > 0:
-            return np.trace(self.npy_rep) / elem_sum
+            return float(np.trace(self.npy_rep) / elem_sum)
         else:
             return 0.
 
