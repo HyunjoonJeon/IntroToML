@@ -1,5 +1,6 @@
 
 import numpy as np
+from ModelBuilders.DecisionTree import DTree
 from NumpyUtils import NpUtils
 from numpy.random import default_rng
 
@@ -92,5 +93,6 @@ class EvalUtils:
                 validation_dataset = training_and_val_dataset[val_indices, :]
                 trained_model = trained_model_constructor(training_dataset)
                 apply_validation_set(validation_dataset, trained_model)
+                print(DTree.evaluate(validation_dataset, trained_model), '\n')
                 final_models.append([trained_model, test_dataset])
         return final_models

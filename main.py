@@ -1,6 +1,6 @@
 import numpy as np
 from Evaluation import EvalUtils, ConfusionMatrix
-from ModelBuilders import DTree
+from ModelBuilders import DTree, DecisionTree
 from numpy.random import default_rng
 from NumpyUtils import NpUtils
 
@@ -15,15 +15,8 @@ def load_dataset(filepath):
     return np.loadtxt(filepath)
 
 
-def no_pruning_with_nested_cross_validation(num_folds, dataset, trained_model_constructor, rng=default_rng()):
-    def apply_validation_set(
-        val_db, model): pass
-    return EvalUtils.nested_k_cross_validation(num_folds, dataset, trained_model_constructor,
-                                               apply_validation_set, rng)
-
-
-def print_no_pruning_with_nested_cross_validation(dataset, trained_model_constructor, num_folds, num_class_labels, rng=default_rng()):
-    trees = no_pruning_with_nested_cross_validation(
+def print_no_pruning(dataset, trained_model_constructor, num_folds, num_class_labels, rng=default_rng()):
+    trees = EvalUtils.k_cross_validation(
         num_folds, dataset, trained_model_constructor, rng)
     avg_conf_matr = ConfusionMatrix.construct_avg_confusion_matrix(
         trees, num_class_labels)
@@ -77,8 +70,7 @@ if __name__ == '__main__':
     num_folds = 10
     dataset_used = noisy_dataset
     num_class_labels = len(NpUtils.unique_col_values(dataset_used, -1))
-    print_no_pruning_with_nested_cross_validation(
+    print_no_pruning(
         dataset_used, trained_model_constructor, num_folds, num_class_labels, rng)
     print_pruning_with_nested_cross_validation(
         dataset_used, trained_model_constructor, num_folds, num_class_labels, rng)
-    # print(tree)

@@ -32,7 +32,8 @@ class DTree:
         self.unique_labels = unique_labels
 
     def visualise(self):
-        tree_array = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+        tree_array = [[], [], [], [], [], [], [],
+                      [], [], [], [], [], [], [], [], []]
         visualise(self, tree_array, 0)
         depth = len(tree_array) - 1
         for trees in reversed(tree_array):
@@ -44,18 +45,23 @@ class DTree:
                 x_coord = x_coord + dx
                 if(tree.is_leaf):
                     plt.plot(x_coord, y_coord, 'x', color='g', markersize=3)
-                    plt.text(x_coord - 1, y_coord + 0.2, 'L: ' + str(tree.val), fontsize=4, color='k', zorder=10)
+                    plt.text(x_coord - 1, y_coord + 0.2, 'L: ' +
+                             str(tree.val), fontsize=4, color='k', zorder=10)
                 else:
                     plt.plot(x_coord, y_coord, 'o', color='b', markersize=3)
-                    plt.text(x_coord - 2, y_coord + 0.2, 'X' + str(tree.attr) + '>' + str(tree.val), fontsize=4, color='k', zorder=10)
+                    plt.text(x_coord - 2, y_coord + 0.2, 'X' + str(tree.attr) +
+                             '>' + str(tree.val), fontsize=4, color='k', zorder=10)
                     if tree.l_tree is not None or tree.r_tree is not None:
                         for index, child_tree in enumerate(tree_array[depth + 1]):
                             if tree.l_tree is child_tree or tree.r_tree is child_tree:
-                                dx_child = (-total_length/2) + ((total_length/(len(tree_array[depth + 1]) + 1)) * (index + 1)) - x_coord
+                                dx_child = (-total_length/2) + (
+                                    (total_length/(len(tree_array[depth + 1]) + 1)) * (index + 1)) - x_coord
                                 if(child_tree.is_leaf):
-                                    plt.arrow(x_coord, y_coord, dx_child, -1, color='g', zorder=1)
+                                    plt.arrow(x_coord, y_coord,
+                                              dx_child, -1, color='g', zorder=1)
                                 else:
-                                    plt.arrow(x_coord, y_coord, dx_child, -1, color='b', zorder=1)
+                                    plt.arrow(x_coord, y_coord,
+                                              dx_child, -1, color='b', zorder=1)
             depth -= 1
         plt.axis('off')
         plt.show()
@@ -166,8 +172,7 @@ class DTree:
             before_prune_accuracy = DTree.evaluate(
                 val_db, root_tree, init_counts=True)
             attr, val, l_tree, r_tree, counts = tree.convert_to_leaf()
-            after_prune_accuracy = DTree.evaluate(
-                val_db, root_tree)
+            after_prune_accuracy = DTree.evaluate(val_db, root_tree)
 
             # Evaluate the resulting “pruned” tree using the “validation set”; prune if accuracy is higher than unpruned
             # "pruned_tree" is side-effected as "pruned"
@@ -204,6 +209,8 @@ class DTree:
     class SplitUtils:
         @classmethod
         def information_entropy(cls, dataset):
+            if dataset.size == 0:
+                return 0
             labels = dataset.transpose()[-1]
 
             _, unique_label_counts = np.unique(labels, return_counts=True)
@@ -218,8 +225,10 @@ class DTree:
         def remainder(cls, s_left, s_right):
             """PRE: "s_left" and "s_right" have labels on their last column.
             """
-            def no_labels_size(s): return s[:, 0].size
-
+            def no_labels_size(s):
+                if s.size != 0:
+                    return s[:, 0].size
+                return 0
             left_size = no_labels_size(s_left)
             right_size = no_labels_size(s_right)
 
@@ -237,22 +246,32 @@ class DTree:
         @classmethod
         def find_split(cls, dataset):
             max_attr_gain = float("-inf")
-            max_attr_idx = None
+            max_attr_idx = 0
             split_value = None
             left_ret, right_ret = None, None
             for i in range(dataset[0].size-1):
                 # Sort array 'a' by column 'i' == a[np.argsort(a[:, i], axis=0)]
-                argsorted_subset = dataset[np.argsort(dataset[:, i], axis=0)]
-                sorted_subset = argsorted_subset[:, :]
+                sorted_dataset = dataset[np.argsort(dataset[:, i], axis=0)]
+
+                # print(sorted_dataset)
+
                 # Not sure if below is needed
                 # subset_for_find_split = argsorted_subset[:, (i, -1)]
+                split_row_idx = len(sorted_dataset)//2
+                while (len(sorted_dataset) > split_row_idx) and (sorted_dataset[split_row_idx - 1, i] == sorted_dataset[split_row_idx, i]):
+                    split_row_idx += 1
 
-                left_right_splits = np.array_split(sorted_subset, 2, axis=0)
-                left, right = left_right_splits[0], left_right_splits[1]
+                left = sorted_dataset[:split_row_idx, :]
+                if len(sorted_dataset) == split_row_idx:
+                    right = np.array([[]])
+                else:
+                    right = sorted_dataset[split_row_idx:, :]
                 attr_i_gain = DTree.SplitUtils.information_gain(
                     dataset, left, right)
 
                 if attr_i_gain > max_attr_gain:
+                    if right.size == 0:
+                        continue
                     max_attr_gain = attr_i_gain
                     max_attr_idx = i
                     max_left, min_right = left.max(
