@@ -6,11 +6,10 @@ from Utils import Utils
 
 def visualise(tree, array, depth):
     """
-    Draws a binary decision tree plot given a tree node using matplotlib.
-    Place the tree node at coordinates (x, y).
-    :param tree: A tree node
-    :param x: The x coordinate of the tree node
-    :param y: The y coordinate of the tree node
+    Converts a tree to an array of nodes dependant on depth for cleaner visualisation.
+    :param tree: The current node on the tree.
+    :param array: The array to append nodes to.
+    :param depth: The depth of current node of the tree.
     """
     if tree.l_tree is not None:
         visualise(tree.l_tree, array, depth + 1)
@@ -21,17 +20,20 @@ def visualise(tree, array, depth):
 
 class DTree:
 
-    def __init__(self, attr, val, l_tree, r_tree, depth, is_leaf, unique_labels):
+    def __init__(self, attr, val, l_tree, r_tree, depth, is_leaf, unique_labels, counts=[0, 0, 0, 0]):
         self.attr = attr
         self.val = val
         self.l_tree = l_tree
         self.r_tree = r_tree
         self.depth = depth
         self.is_leaf = is_leaf
-        self.counts = None
+        self.counts = counts
         self.unique_labels = unique_labels
 
     def visualise(self):
+        """
+        Draw and output the decision tree from the current node as the root using matplotlib
+        """
         tree_array = [[], [], [], [], [], [], [],
                       [], [], [], [], [], [], [], [], []]
         visualise(self, tree_array, 0)
@@ -66,18 +68,14 @@ class DTree:
         plt.axis('off')
         plt.show()
 
-    def init_counts(self, num_labels):
-        # reset all internal counts
-        self.counts = [0] * num_labels
-        self.r_tree and self.r_tree.init_counts(num_labels)
-        self.l_tree and self.l_tree.init_counts(num_labels)
-
     def predict(self, attrs_row):
+        """
+        Return the predicted class label of the given attributes row using the tree from the current node.
+        :param attrs_row: The attributes row to predict the class label of.
+        """
         # last column is the correct classification label
         attr_value = attrs_row[self.attr]
         if (self.is_leaf):
-            if self.counts:
-                self.counts[int(attrs_row[-1]) - 1] += 1
             return self.val
         if (attr_value < self.val):
             # take left
@@ -85,6 +83,9 @@ class DTree:
         return self.r_tree.predict(attrs_row)
 
     def is_only_leaf_parent(self):
+        """
+        Return true if the current node of the tree is a parent with only leaf children.
+        """
         return (self.l_tree and self.l_tree.is_leaf) and (self.r_tree and self.r_tree.is_leaf)
 
     def get_all_leaf_only_parents(self):
@@ -101,6 +102,9 @@ class DTree:
         return ret
 
     def get_majority_class_label(self):
+        """
+        Return the majority class label of the current node by looking at the two children (only works for only_leaf_parent nodes).
+        """
         total_counts = self.counts  # 0s
         if self.r_tree:
             # add to total_counts
@@ -114,7 +118,9 @@ class DTree:
         return max(enumerate(total_counts), key=lambda total_count_idx: total_count_idx[1])[0] + 1
 
     def convert_to_leaf(self):
-        """Convert node to a leaf whose value is the majority class label, returns tuple of old attributes for "convert_back"."""
+        """
+        Convert node to a leaf whose value is the majority class label, returns tuple of old attributes for "convert_back".
+        """
         old_attrs = (self.attr, self.val, self.l_tree,
                      self.r_tree, self.counts)
         self.val = self.get_majority_class_label()
@@ -127,6 +133,9 @@ class DTree:
         return old_attrs
 
     def convert_back(self, attr, val, l_tree, r_tree, counts):
+        """
+        Use old tuple of attributes from "convert_to_leaf" to convert back to a non-leaf node.
+        """
         # (attr, val, l_tree, r_tree)
         self.val = val
         self.is_leaf = False
@@ -135,16 +144,13 @@ class DTree:
         self.counts = counts
 
     @classmethod
-    def evaluate(cls, test_db, root, init_counts=False):
-        """Returns the accuracy of the tree
+    def evaluate(cls, test_db, root):
+        """
+        Returns the accuracy of the tree
         """
         # Modify "unique_labels", test data may have unseen labels
         root.unique_labels = root.unique_labels.union(
             NpUtils.unique_col_values(test_db, -1))
-
-        num_labels = len(root.unique_labels)
-        if init_counts:
-            root.init_counts(num_labels)
 
         correct_predictions = 0
         total = NpUtils.row_count(test_db)
@@ -159,6 +165,10 @@ class DTree:
 
     @classmethod
     def construct(cls, training_dataset):
+        """
+        Constructs a decision tree from the given training dataset.
+        :param training_dataset: The training dataset to construct the decision tree from.
+        """
         unique_labels = NpUtils.unique_col_values(training_dataset, -1)
         built_tree, built_tree_depth = DTree.decision_tree_learning(
             training_dataset, unique_labels)
@@ -166,17 +176,23 @@ class DTree:
 
     @classmethod
     def prune(cls, val_db, tree, root_tree):
+        """
+        Prune the tree by replacing leaf_only_parents with leaf if it improves accuracy.
+        :param val_db: The validation dataset to evaluate the necessity of pruning on.
+        :param tree: The tree to prune.
+        :param root_tree: The root of the tree to prune.
+        """
         if tree.is_only_leaf_parent():
             # prune
             # convert into a leaf whose value is the majority class label
             before_prune_accuracy = DTree.evaluate(
-                val_db, root_tree, init_counts=True)
+                val_db, root_tree)
             attr, val, l_tree, r_tree, counts = tree.convert_to_leaf()
             after_prune_accuracy = DTree.evaluate(val_db, root_tree)
 
             # Evaluate the resulting “pruned” tree using the “validation set”; prune if accuracy is higher than unpruned
             # "pruned_tree" is side-effected as "pruned"
-            if after_prune_accuracy <= before_prune_accuracy:
+            if after_prune_accuracy < before_prune_accuracy:
                 # worse tree, revert back
                 tree.convert_back(attr, val, l_tree, r_tree, counts)
                 return False
@@ -192,9 +208,17 @@ class DTree:
 
     @classmethod
     def decision_tree_learning(cls, training_dataset, unique_labels, depth=0):
+        """
+        Returns the root node and max depth while constructing a decision tree from the given training dataset.
+        :param training_dataset: The training dataset to construct the decision tree from.
+        :param unique_labels: The unique labels in the training dataset.
+        :param depth: The current depth of the tree.
+        """
         labels = training_dataset[:, -1]
         if np.unique(labels).size == 1:
-            return DTree.LeafNode(labels[0], depth, unique_labels), depth
+            counts = [0, 0, 0, 0]
+            counts[int(labels[0]) - 1] = labels.size
+            return DTree.LeafNode(labels[0], depth, unique_labels, counts), depth
         split_idx, split_value, l_dataset, r_dataset = DTree.SplitUtils.find_split(
             training_dataset)
 
@@ -209,6 +233,10 @@ class DTree:
     class SplitUtils:
         @classmethod
         def information_entropy(cls, dataset):
+            """
+            Returns the information entropy of the given dataset.
+            :param dataset: The dataset to calculate the information entropy of.
+            """
             if dataset.size == 0:
                 return 0
             labels = dataset.transpose()[-1]
@@ -223,7 +251,10 @@ class DTree:
 
         @classmethod
         def remainder(cls, s_left, s_right):
-            """PRE: "s_left" and "s_right" have labels on their last column.
+            """
+            Returns the remainder of the given two datasets.
+            :param s_left: The left dataset.
+            :param s_right: The right dataset.
             """
             def no_labels_size(s):
                 if s.size != 0:
@@ -240,11 +271,21 @@ class DTree:
 
         @classmethod
         def information_gain(cls, dataset, left, right):
+            """
+            Returns the information gain of the given dataset.
+            :param dataset: The dataset to calculate the information gain of.
+            :param left: The left dataset.
+            :param right: The right dataset.
+            """
             h_dataset = DTree.SplitUtils.information_entropy(dataset)
             return h_dataset - DTree.SplitUtils.remainder(left, right)
 
         @classmethod
         def find_split(cls, dataset):
+            """
+            Returns the split index, split value, left dataset, right dataset of the given dataset based on the information gain.
+            :param dataset: The dataset to find the split of.
+            """
             max_attr_gain = float("-inf")
             max_attr_idx = 0
             split_value = None
@@ -252,11 +293,6 @@ class DTree:
             for i in range(dataset[0].size-1):
                 # Sort array 'a' by column 'i' == a[np.argsort(a[:, i], axis=0)]
                 sorted_dataset = dataset[np.argsort(dataset[:, i], axis=0)]
-
-                # print(sorted_dataset)
-
-                # Not sure if below is needed
-                # subset_for_find_split = argsorted_subset[:, (i, -1)]
                 split_row_idx = len(sorted_dataset)//2
                 while (len(sorted_dataset) > split_row_idx) and (sorted_dataset[split_row_idx - 1, i] == sorted_dataset[split_row_idx, i]):
                     split_row_idx += 1
@@ -284,8 +320,8 @@ class DTree:
     # Factory Methods
 
     @ classmethod
-    def LeafNode(cls, val, depth, unique_labels):
-        return DTree(None, val, None, None, depth, True, unique_labels)
+    def LeafNode(cls, val, depth, unique_labels, counts):
+        return DTree(None, val, None, None, depth, True, unique_labels, counts)
 
     @ classmethod
     def Node(cls, attr, val, depth, unique_labels):

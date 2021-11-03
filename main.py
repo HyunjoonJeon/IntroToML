@@ -8,17 +8,36 @@ import os
 
 
 def load_dataset(filepath):
+    """
+    Returns numpy array with dataset loaded from filepath.
+    :param filepath: path to dataset file
+    """
     return np.loadtxt(filepath)
 
 
-def print_no_pruning_with_nested_cross_validation(dataset, trained_model_constructor, num_folds, num_class_labels, rng=default_rng()):
+def print_no_pruning_with_k_cross_validation(dataset, trained_model_constructor, num_folds, num_class_labels, rng=default_rng()):
+    """
+    Prints all average metrics of k trees using k-cross validation on the dataset inputted.
+    :param dataset: numpy array with dataset
+    :param trained_model_constructor: function that returns a trained model
+    :param num_folds: number of folds to use in k-cross validation
+    :param num_class_labels: number of class labels
+    :param rng: random number generator
+    """
     trees = EvalUtils.k_cross_validation(
         num_folds, dataset, trained_model_constructor, rng)
     print_stats(
-        f"No Pruning, nested {num_folds}-cross validation", trees, num_class_labels)
+        f"No Pruning, {num_folds}-cross validation", trees, num_class_labels)
 
 
 def pruning_with_nested_cross_validation(num_folds, dataset, trained_model_constructor, rng=default_rng()):
+    """
+    Returns (k * k-1) pruned trees using nested k-cross validation on the dataset inputted.
+    :param num_folds: number of folds to use in nested cross validation
+    :param dataset: numpy array with dataset
+    :param trained_model_constructor: function that returns a trained model
+    :param rng: random number generator
+    """
     def apply_validation_set(
             val_db, model):
         DTree.prune(val_db, model, model)
@@ -27,6 +46,14 @@ def pruning_with_nested_cross_validation(num_folds, dataset, trained_model_const
 
 
 def print_pruning_with_nested_cross_validation(dataset, trained_model_constructor, num_folds, num_class_labels, rng=default_rng()):
+    """
+    Prints all average metrics of (k * k-1) pruned trees using nested k-cross validation on the dataset inputted.
+    :param dataset: numpy array with dataset
+    :param trained_model_constructor: function that returns a trained model
+    :param num_folds: number of folds to use in nested cross validation
+    :param num_class_labels: number of class labels
+    :param rng: random number generator
+    """
     pruned_trees = pruning_with_nested_cross_validation(
         num_folds, dataset, trained_model_constructor, rng)
     print_stats(
@@ -34,6 +61,12 @@ def print_pruning_with_nested_cross_validation(dataset, trained_model_constructo
 
 
 def print_stats(name, trees, num_class_labels):
+    """
+    Prints average metrics of inputted trees including confusion matrix, accuracy, precision, recall, and f1 score per class.
+    :param name: name of the set of trees
+    :param trees: list of trees
+    :param num_class_labels: number of class labels
+    """
     print(f"<!--- Start {name} --->")
     avg_conf_matr = ConfusionMatrix.construct_avg_confusion_matrix(
         trees, num_class_labels)
@@ -46,19 +79,25 @@ def print_stats(name, trees, num_class_labels):
     print("F1 vals: ", avg_conf_matr.f1_measure())
     print(f"<!--- End {name}. --->")
 
-
-# tree, depth = decision_tree_learning(skewed_dataset)
-# trained_tree, depth = decision_tree_learning(clean_dataset)
-# print_cross_validation(clean_dataset)
-def trained_model_constructor(
-    training_set): return DTree.construct(training_set)
+def trained_model_constructor(training_set):
+    """
+    Returns a trained decision tree model.
+    :param training_set: numpy array with training set
+    """
+    return DTree.construct(training_set)
 
 
 def run(filepath, num_folds, seed):
+    """
+    Runs the program.
+    :param filepath: path to dataset file
+    :param num_folds: number of folds to use in cross validation
+    :param seed: seed for random number generator
+    """
     dataset_used = load_dataset(filepath)
     rng = default_rng(seed)
     num_class_labels = len(NpUtils.unique_col_values(dataset_used, -1))
-    print_no_pruning_with_nested_cross_validation(
+    print_no_pruning_with_k_cross_validation(
         dataset_used, trained_model_constructor, num_folds, num_class_labels, rng)
     print_pruning_with_nested_cross_validation(
         dataset_used, trained_model_constructor, num_folds, num_class_labels, rng)
@@ -71,11 +110,17 @@ BIND_CLI_ARG_VALUE_CHAR = '='
 
 
 def print_invalid_cli_call():
+    """
+    Prints invalid CLI call message.
+    """
     print(
-        f"Invalid cli call, argument format: [{DB_CLI_ARG_NAME}{BIND_CLI_ARG_VALUE_CHAR}<value>] [{FOLDS_CLI_ARG_NAME}{BIND_CLI_ARG_VALUE_CHAR}<value>] [{SEED_CLI_ARG_NAME}{BIND_CLI_ARG_VALUE_CHAR}<value>]")
+    f"Invalid cli call, argument format: [{DB_CLI_ARG_NAME}{BIND_CLI_ARG_VALUE_CHAR}<value>] [{FOLDS_CLI_ARG_NAME}{BIND_CLI_ARG_VALUE_CHAR}<value>] [{SEED_CLI_ARG_NAME}{BIND_CLI_ARG_VALUE_CHAR}<value>]")
 
 
 def print_bad_arg(argName):
+    """
+    Prints invalid argument message.
+    """
     print(f"Bad argument given: {argName}")
 
 

@@ -67,6 +67,13 @@ class EvalUtils:
 
     @classmethod
     def k_cross_validation(cls, k, dataset, trained_model_constructor, random_generator=default_rng()):
+        """
+        Return a list of models after performing k-fold cross validation on the dataset.
+        :param k: Number of folds
+        :param dataset: Numpy dataset to perform cross validation on
+        :param trained_model_constructor: A function that takes in a training dataset and returns a trained model
+        :param random_generator: A random generator
+        """
         # number of rows
         n_instances = NpUtils.row_count(dataset)
 
@@ -81,6 +88,14 @@ class EvalUtils:
     @classmethod
     def nested_k_cross_validation(cls, k, dataset, trained_model_constructor, apply_validation_set,
                                   random_generator=default_rng()):
+        """
+        Return a list of models after performing nested k-fold cross validation on the dataset.
+        :param k: Number of folds
+        :param dataset: Numpy dataset to perform cross validation on
+        :param trained_model_constructor: A function that takes in a training dataset and returns a trained model
+        :param apply_validation_set: A function that takes in the validation dataset and tunes the trained model
+        :param random_generator: A random generator
+        """
         # number of rows
         n_instances = NpUtils.row_count(dataset)
         final_models = list()
