@@ -4,21 +4,19 @@ from NumpyUtils import NpUtils
 from Utils import Utils
 
 
-def _visualise(tree, xs, ys, anns, xval):
-
-    xs.append(xval)
-    ys.append(tree.depth * -1)
-
-    if tree.is_leaf:
-        anns.append(f"leaf:{tree.val}")
-    else:
-        anns.append(f"[X{tree.attr} < {tree.val}]")
-        offset = 50
-        if tree.depth != 0:
-            offset = offset - 2 * tree.depth
-
-        _visualise(tree.l_tree, xs, ys, anns, xval + offset)
-        _visualise(tree.r_tree, xs, ys, anns, xval - offset)
+def visualise(tree, array, depth):
+    """
+    Draws a binary decision tree plot given a tree node using matplotlib.
+    Place the tree node at coordinates (x, y).
+    :param tree: A tree node
+    :param x: The x coordinate of the tree node
+    :param y: The y coordinate of the tree node
+    """
+    if tree.l_tree is not None:
+        visualise(tree.l_tree, array, depth + 1)
+    if tree.r_tree is not None:
+        visualise(tree.r_tree, array, depth + 1)
+    array[depth].append(tree)
 
 
 class DTree:
@@ -34,15 +32,32 @@ class DTree:
         self.unique_labels = unique_labels
 
     def visualise(self):
-        xs, ys, anns = [], [], []
-        _visualise(self, xs, ys, anns, 0)
-        # print(xs, ys, anns)
-
-        fig, dtree = plt.subplots()
-        plt.scatter(x=xs, y=ys)
-
-        for i, ann in enumerate(anns):
-            dtree.annotate(ann, (xs[i], ys[i]))
+        tree_array = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+        visualise(self, tree_array, 0)
+        depth = len(tree_array) - 1
+        for trees in reversed(tree_array):
+            total_length = 200
+            dx = total_length/(len(trees) + 1)
+            x_coord = -total_length/2
+            y_coord = -depth
+            for tree in trees:
+                x_coord = x_coord + dx
+                if(tree.is_leaf):
+                    plt.plot(x_coord, y_coord, 'x', color='g', markersize=3)
+                    plt.text(x_coord - 1, y_coord + 0.2, 'L: ' + str(tree.val), fontsize=4, color='k', zorder=10)
+                else:
+                    plt.plot(x_coord, y_coord, 'o', color='b', markersize=3)
+                    plt.text(x_coord - 2, y_coord + 0.2, 'X' + str(tree.attr) + '>' + str(tree.val), fontsize=4, color='k', zorder=10)
+                    if tree.l_tree is not None or tree.r_tree is not None:
+                        for index, child_tree in enumerate(tree_array[depth + 1]):
+                            if tree.l_tree is child_tree or tree.r_tree is child_tree:
+                                dx_child = (-total_length/2) + ((total_length/(len(tree_array[depth + 1]) + 1)) * (index + 1)) - x_coord
+                                if(child_tree.is_leaf):
+                                    plt.arrow(x_coord, y_coord, dx_child, -1, color='g', zorder=1)
+                                else:
+                                    plt.arrow(x_coord, y_coord, dx_child, -1, color='b', zorder=1)
+            depth -= 1
+        plt.axis('off')
         plt.show()
 
     def init_counts(self, num_labels):
