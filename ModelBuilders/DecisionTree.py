@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from NumpyUtils import NpUtils
+import copy
 from Utils import Utils
 
 
@@ -179,13 +180,23 @@ class DTree:
         return built_tree
 
     @classmethod
-    def prune(cls, val_db, tree, root_tree):
+    def prune(cls, val_db, tree):
+        return DTree._prune(val_db, tree, tree)
+
+    @classmethod
+    def _prune(cls, val_db, tree, root_tree):
         """
         Prune the tree by replacing leaf_only_parents with leaf if it improves accuracy.
         :param val_db: The validation dataset to evaluate the necessity of pruning on.
         :param tree: The tree to prune.
         :param root_tree: The root of the tree to prune.
         """
+
+        l_tree_pruned = tree.l_tree and DTree._prune(
+            val_db, tree.l_tree, root_tree)
+        r_tree_pruned = tree.r_tree and DTree._prune(
+            val_db, tree.r_tree, root_tree)
+
         if tree.is_only_leaf_parent():
             # prune
             # convert into a leaf whose value is the majority class label
@@ -203,12 +214,7 @@ class DTree:
             # better tree, keep it
             return True
 
-        l_tree_pruned = tree.l_tree and DTree.prune(
-            val_db, tree.l_tree, root_tree)
-        r_tree_pruned = tree.r_tree and DTree.prune(
-            val_db, tree.r_tree, root_tree)
-
-        return l_tree_pruned and r_tree_pruned and DTree.prune(val_db, tree, root_tree)
+        return l_tree_pruned and r_tree_pruned and DTree._prune(val_db, tree, root_tree)
 
     @classmethod
     def decision_tree_learning(cls, training_dataset, unique_labels, depth=0):

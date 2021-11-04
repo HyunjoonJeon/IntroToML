@@ -114,10 +114,6 @@ class EvalUtils:
                     [trained_model_cpy, test_dataset])
 
                 apply_validation_set(validation_dataset, trained_model)
-                apply_validation_set(validation_dataset, trained_model)
-                apply_validation_set(validation_dataset, trained_model)
-                apply_validation_set(validation_dataset, trained_model)
-                apply_validation_set(validation_dataset, trained_model)
 
                 final_models.append([trained_model, test_dataset])
         return final_models, unapplied_validation_set_models

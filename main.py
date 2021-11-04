@@ -16,22 +16,6 @@ def load_dataset(filepath):
     return np.loadtxt(filepath)
 
 
-def print_no_pruning_with_k_cross_validation(dataset, trained_model_constructor, num_folds, num_class_labels, visualise_cnt, rng=default_rng()):
-    """
-    Prints all average metrics of k trees using k-cross validation on the dataset inputted.
-    :param dataset: numpy array with dataset
-    :param trained_model_constructor: function that returns a trained model
-    :param num_folds: number of folds to use in k-cross validation
-    :param num_class_labels: number of class labels
-    :param visualise_cnt: number of trees to visualise
-    :param rng: random number generator
-    """
-    trees = EvalUtils.k_cross_validation(
-        num_folds, dataset, trained_model_constructor, rng)
-    print_stats(
-        f"No Pruning, {num_folds}-cross validation", trees, num_class_labels, visualise_cnt)
-
-
 def pruning_with_nested_cross_validation(num_folds, dataset, trained_model_constructor, rng=default_rng()):
     """
     Returns (k * k-1) pruned trees using nested k-cross validation on the dataset inputted.
@@ -42,7 +26,7 @@ def pruning_with_nested_cross_validation(num_folds, dataset, trained_model_const
     """
     def apply_validation_set(
             val_db, model):
-        DTree.prune(val_db, model, model)
+        DTree.prune(val_db, model)
     return EvalUtils.nested_k_cross_validation(num_folds, dataset, trained_model_constructor,
                                                apply_validation_set, rng)
 
@@ -104,30 +88,6 @@ def print_comparison_stats(name, trees_1, trees_2, num_class_labels, visualise_c
         print_comparison_separator(visualise_label, name_2)
         trees_2[i][0].visualise(show=True)
     print(wrap_as_boundary(f"End {name}."))
-
-
-def print_stats(name, trees, num_class_labels, visualise_cnt):
-    """
-    Prints average metrics of inputted trees including confusion matrix, accuracy, precision, recall, and f1 score per class.
-    :param name: name of the set of trees
-    :param trees: list of trees
-    :param num_class_labels: number of class labels
-    :param visualise_cnt: number of trees to visualise
-    """
-    print(f"<!--- Start {name} --->")
-    avg_conf_matr = ConfusionMatrix.construct_avg_confusion_matrix(
-        trees, num_class_labels)
-    print("Average confusion matrix: \n", avg_conf_matr)
-    print("Accuracy vals: ",
-          avg_conf_matr.accuracy())
-    print("Recall vals: ", avg_conf_matr.recall())
-    print("Precision vals: ",
-          avg_conf_matr.precision())
-    print("F1 vals: ", avg_conf_matr.f1_measure())
-    for i in range(0, min(visualise_cnt, len(trees))):
-        print(f"Visualise tree #{i+1}")
-        trees[i][0].visualise()
-    print(f"<!--- End {name}. --->")
 
 
 def trained_model_constructor(training_set):
