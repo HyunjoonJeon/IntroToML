@@ -30,14 +30,17 @@ class DTree:
         self.counts = counts
         self.unique_labels = unique_labels
 
-    def visualise(self):
+    def visualise(self, show=False):
         """
-        Draw and output the decision tree from the current node as the root using matplotlib
+        Draw the decision tree from the current node as the root using matplotlib.
+        Show all plotted diagrams when "show=True".
         """
         tree_array = [[], [], [], [], [], [], [],
                       [], [], [], [], [], [], [], [], []]
         visualise(self, tree_array, 0)
         depth = len(tree_array) - 1
+        # Assign a figure number to allow for multiple windows
+        plt.figure()
         for trees in reversed(tree_array):
             total_length = 200
             dx = total_length/(len(trees) + 1)
@@ -66,7 +69,8 @@ class DTree:
                                               dx_child, -1, color='b', zorder=1)
             depth -= 1
         plt.axis('off')
-        plt.show()
+        if show:
+            plt.show()
 
     def predict(self, attrs_row):
         """

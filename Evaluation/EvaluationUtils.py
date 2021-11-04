@@ -89,7 +89,8 @@ class EvalUtils:
     def nested_k_cross_validation(cls, k, dataset, trained_model_constructor, apply_validation_set,
                                   random_generator=default_rng()):
         """
-        Return a list of models after performing nested k-fold cross validation on the dataset.
+        Return a pair,  fst element: list of models after performing nested k-fold cross validation on the dataset,
+                        snd element: list of models with the "apply_validation_set" unapplied.
         :param k: Number of folds
         :param dataset: Numpy dataset to perform cross validation on
         :param trained_model_constructor: A function that takes in a training dataset and returns a trained model
@@ -99,6 +100,7 @@ class EvalUtils:
         # number of rows
         n_instances = NpUtils.row_count(dataset)
         final_models = list()
+        unapplied_validation_set_models = list()
         for (train_indices, test_indices) in EvalUtils.train_test_k_fold(k, n_instances, random_generator):
             training_and_val_dataset = dataset[train_indices, :]
             test_dataset = dataset[test_indices, :]
@@ -107,6 +109,15 @@ class EvalUtils:
                 training_dataset = training_and_val_dataset[train_indices, :]
                 validation_dataset = training_and_val_dataset[val_indices, :]
                 trained_model = trained_model_constructor(training_dataset)
+                trained_model_cpy = trained_model_constructor(training_dataset)
+                unapplied_validation_set_models.append(
+                    [trained_model_cpy, test_dataset])
+
                 apply_validation_set(validation_dataset, trained_model)
+                apply_validation_set(validation_dataset, trained_model)
+                apply_validation_set(validation_dataset, trained_model)
+                apply_validation_set(validation_dataset, trained_model)
+                apply_validation_set(validation_dataset, trained_model)
+
                 final_models.append([trained_model, test_dataset])
-        return final_models
+        return final_models, unapplied_validation_set_models
