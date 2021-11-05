@@ -1,4 +1,5 @@
 import numpy as np
+from NumpyUtils import NpUtils
 
 
 class ConfusionMatrix:
@@ -7,7 +8,7 @@ class ConfusionMatrix:
     def __init__(self, npy_rep):
         self.npy_rep = npy_rep
 
-    def fn_measure(self, beta):
+    def fn_measure(self, beta, as_latex=False):
         precisions = self.precision()
         recalls = self.recall()
 
@@ -27,12 +28,14 @@ class ConfusionMatrix:
                 ((beta_sqr * i_precision) + i_recall)
             f_measures.append(i_f_measure)
 
-        return np.array(f_measures)
+        ret = np.array(f_measures)
+        if as_latex:
+            return NpUtils.nparray_to_latex_row(f"F{beta} measure", ret)
 
-    def f1_measure(self):
-        return self.fn_measure(1)
+    def f1_measure(self, as_latex=False):
+        return self.fn_measure(1, as_latex)
 
-    def precision(self):
+    def precision(self, as_latex=False):
         # Compute the precision per class
         p = list()
         for i in range(len(self.npy_rep)):
@@ -40,10 +43,12 @@ class ConfusionMatrix:
             i_col_tp = self.npy_rep[i][i]
             i_col_precision = i_col_tp / i_col_sum
             p.append(i_col_precision)
+        ret = np.array(p)
+        if as_latex:
+            return NpUtils.nparray_to_latex_row("Precision", ret)
+        return ret
 
-        return np.array(p)
-
-    def recall(self):
+    def recall(self, as_latex=False):
         # Compute the recall per class
         r = list()
         for i in range(len(self.npy_rep)):
@@ -52,7 +57,10 @@ class ConfusionMatrix:
             i_col_recall = i_col_tp / i_row_sum
             r.append(i_col_recall)
 
-        return np.array(r)
+        ret = np.array(r)
+        if as_latex:
+            return NpUtils.nparray_to_latex_row("Recall", ret)
+        return ret
 
     def accuracy(self):
         elem_sum = np.sum(self.npy_rep)
@@ -108,6 +116,11 @@ class ConfusionMatrix:
         total_confusion /= len(tree_test_dataset_pairs)
         # returns average confusion matrix
         return ConfusionMatrix(total_confusion)
+
+    def get_npy_rep(self, as_latex=False):
+        if as_latex:
+            return NpUtils.nparray_to_latex(self.npy_rep)
+        return self.npy_rep
 
     def __repr__(self):
         return self.npy_rep.__repr__()
