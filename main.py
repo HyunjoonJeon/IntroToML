@@ -51,7 +51,8 @@ def wrap_as_boundary(value):
     return f"<!--- {value} --->"
 
 
-def print_comparison_stats(name, trees_1, trees_2, num_class_labels, visualise_cnt):
+def print_comparison_stats(name, tree_testdataset_pairs_1, tree_testdataset_pairs_2, num_class_labels,
+                           visualise_cnt):
     name_1 = f"With {name}"
     name_2 = f"Without {name}"
 
@@ -66,9 +67,9 @@ def print_comparison_stats(name, trees_1, trees_2, num_class_labels, visualise_c
 
     print(wrap_as_boundary(f"Start {name}"))
     avg_conf_matr_1 = ConfusionMatrix.construct_avg_confusion_matrix(
-        trees_1, num_class_labels)
+        tree_testdataset_pairs_1, num_class_labels)
     avg_conf_matr_2 = ConfusionMatrix.construct_avg_confusion_matrix(
-        trees_2, num_class_labels)
+        tree_testdataset_pairs_2, num_class_labels)
     wrap_print_comparison("Average confusion matrix",
                           avg_conf_matr_1, avg_conf_matr_2)
 
@@ -81,12 +82,20 @@ def print_comparison_stats(name, trees_1, trees_2, num_class_labels, visualise_c
     wrap_print_comparison("F1 vals",
                           avg_conf_matr_1.f1_measure(), avg_conf_matr_2.f1_measure())
 
+    def compute_tree_depth_avg(ts):
+        return float(sum(list(map(lambda t: t.get_depth(), ts)))/len(ts))
+
+    trees_1 = list(map(lambda pair: pair[0], tree_testdataset_pairs_1))
+    trees_2 = list(map(lambda pair: pair[0], tree_testdataset_pairs_2))
+    wrap_print_comparison("Average maximum depth",
+                          compute_tree_depth_avg(trees_1), compute_tree_depth_avg(trees_2))
+
     for i in range(0, min(visualise_cnt, len(trees_1))):
         visualise_label = f"Visualise tree #{i+1}"
         print_comparison_separator(visualise_label, name_1)
-        trees_1[i][0].visualise()
+        trees_1[i].visualise()
         print_comparison_separator(visualise_label, name_2)
-        trees_2[i][0].visualise(show=True)
+        trees_2[i].visualise(show=True)
     print(wrap_as_boundary(f"End {name}."))
 
 
@@ -109,8 +118,6 @@ def run(filepath, num_folds, seed, visualise_cnt):
     dataset_used = load_dataset(filepath)
     rng = default_rng(seed)
     num_class_labels = len(NpUtils.unique_col_values(dataset_used, -1))
-    # print_no_pruning_with_k_cross_validation(
-    #     dataset_used, trained_model_constructor, num_folds, num_class_labels, visualise_cnt, rng)
     print_pruning_with_nested_cross_validation(
         dataset_used, trained_model_constructor, num_folds, num_class_labels, visualise_cnt, rng)
 
@@ -118,7 +125,7 @@ def run(filepath, num_folds, seed, visualise_cnt):
 DB_CLI_ARG_NAME = "db"
 FOLDS_CLI_ARG_NAME = "folds"
 SEED_CLI_ARG_NAME = "seed"
-VISUALISE_CLI_ARG_NAME = "visualise"
+VISUALISE_CLI_ARG_NAME = "visualise_cnt"
 BIND_CLI_ARG_VALUE_CHAR = '='
 
 

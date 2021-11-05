@@ -31,6 +31,16 @@ class DTree:
         self.counts = counts
         self.unique_labels = unique_labels
 
+    def get_depth(self):
+        if self.is_leaf:
+            return 0
+        # count the number of nodes
+        if self.l_tree:
+            l_depth = self.l_tree.get_depth()
+        if self.r_tree:
+            r_depth = self.r_tree.get_depth()
+        return 1 + max(l_depth, r_depth)
+
     def visualise(self, show=False):
         """
         Draw the decision tree from the current node as the root using matplotlib.
