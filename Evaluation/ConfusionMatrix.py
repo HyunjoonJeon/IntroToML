@@ -31,6 +31,7 @@ class ConfusionMatrix:
         ret = np.array(f_measures)
         if as_latex:
             return NpUtils.nparray_to_latex_row(f"F{beta} measure", ret)
+        return ret
 
     def f1_measure(self, as_latex=False):
         return self.fn_measure(1, as_latex)
