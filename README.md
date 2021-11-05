@@ -1,9 +1,13 @@
-# Quick Start 
+# Quick Start
+
 Note that the CLI arguments defaults are shown below.
+
 ## Pruning nested 10 cross validation
+
 python3 main.py prune=true visualise_cnt=1
 
-## 10 cross validation 
+## 10 cross validation
+
 python3 main.py visualise_cnt=1
 
 # Command Line Interface (CLI)
