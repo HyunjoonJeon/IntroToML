@@ -236,7 +236,7 @@ class DTree:
         """
         labels = training_dataset[:, -1]
         if np.unique(labels).size == 1:
-            counts = [0, 0, 0, 0]
+            counts = Utils.construct_zeros_list(len(unique_labels))
             counts[int(labels[0]) - 1] = labels.size
             return DTree.LeafNode(labels[0], depth, unique_labels, counts), depth
         split_idx, split_value, l_dataset, r_dataset = DTree.SplitUtils.find_split(
@@ -244,9 +244,9 @@ class DTree:
 
         node = DTree.Node(split_idx, split_value, depth, unique_labels)
         l_branch, l_depth = DTree.decision_tree_learning(
-            l_dataset, depth+1)
+            l_dataset, unique_labels, depth+1)
         r_branch, r_depth = DTree.decision_tree_learning(
-            r_dataset, depth+1)
+            r_dataset, unique_labels, depth+1)
         node.l_tree, node.r_tree = l_branch, r_branch
         return node, max(l_depth, r_depth)
 
